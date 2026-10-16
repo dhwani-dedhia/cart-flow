@@ -18,25 +18,44 @@ class CartItemTile extends StatelessWidget {
     final cartCubit = context.read<CartCubit>();
     final product = item.product;
 
-    return Card(
+    return Container(
       margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border, width: 1),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x060F172A),
+            blurRadius: 10,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // Product Image
+            // Product Image Thumbnail
             ClipRRect(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(12),
               child: Container(
-                width: 72,
-                height: 72,
-                color: const Color(0xFFF1F5F9),
+                width: 76,
+                height: 76,
+                color: const Color(0xFFF8FAFC),
                 child: CachedNetworkImage(
                   imageUrl: product.thumbnail.isNotEmpty
                       ? product.thumbnail
                       : (product.images.isNotEmpty ? product.images.first : ''),
-                  fit: BoxFit.cover,
+                  fit: BoxFit.contain,
+                  placeholder: (context, url) => const Center(
+                    child: SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  ),
                   errorWidget: (context, url, error) => const Icon(
                     Icons.image_not_supported_outlined,
                     color: AppColors.textMuted,
@@ -46,7 +65,7 @@ class CartItemTile extends StatelessWidget {
             ),
             const SizedBox(width: 12),
 
-            // Details
+            // Item Details
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -58,84 +77,155 @@ class CartItemTile extends StatelessWidget {
                         child: Text(
                           product.title,
                           style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w700,
                             color: AppColors.textPrimary,
+                            height: 1.25,
                           ),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      IconButton(
-                        icon: const Icon(
-                          Icons.delete_outline_rounded,
-                          size: 20,
-                          color: AppColors.error,
+                      const SizedBox(width: 6),
+                      Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(8),
+                          onTap: () => cartCubit.removeItem(product.id),
+                          child: Container(
+                            padding: const EdgeInsets.all(5),
+                            decoration: BoxDecoration(
+                              color: AppColors.errorContainer.withValues(alpha: 0.6),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(
+                              Icons.delete_outline_rounded,
+                              size: 17,
+                              color: AppColors.error,
+                            ),
+                          ),
                         ),
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                        tooltip: 'Remove',
-                        onPressed: () => cartCubit.removeItem(product.id),
                       ),
                     ],
                   ),
                   const SizedBox(height: 4),
 
-                  // Unit price
-                  Text(
-                    'Unit: \$${item.unitPrice.toStringAsFixed(2)}',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: AppColors.textSecondary,
-                    ),
+                  // Unit price and Stock / MOQ tags
+                  Row(
+                    children: [
+                      Text(
+                        '\$${item.unitPrice.toStringAsFixed(2)} each',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      if (item.product.minimumOrderQuantity > 1) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 1.5,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.primaryContainer,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            'Min: ${item.product.minimumOrderQuantity}',
+                            style: const TextStyle(
+                              color: AppColors.primaryDark,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
+                  if (item.quantity >= item.product.stock) ...[
+                    const SizedBox(height: 3),
+                    Text(
+                      'Max stock reached (${item.product.stock})',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AppColors.warningDark,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 8),
 
-                  // Quantity Controls & Total Item Price
+                  // Total & Stepper Row
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      // Total price for this item
                       Text(
-                        'Total: \$${item.totalPrice.toStringAsFixed(2)}',
+                        '\$${item.totalPrice.toStringAsFixed(2)}',
                         style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
                           color: AppColors.primary,
+                          letterSpacing: -0.2,
                         ),
                       ),
 
-                      // [-] qty [+]
+                      // Stepper: [-] qty [+]
                       Container(
                         height: 32,
                         decoration: BoxDecoration(
                           color: AppColors.primaryContainer,
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(10),
                           border: Border.all(
-                            color: AppColors.primary.withValues(alpha: 0.2),
+                            color: AppColors.primary.withValues(alpha: 0.25),
                           ),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            _buildButton(
+                            _buildStepperButton(
                               icon: Icons.remove,
+                              tooltip: item.quantity <=
+                                      item.product.minimumOrderQuantity
+                                  ? 'Remove item'
+                                  : 'Decrease',
                               onTap: () => cartCubit.decreaseQuantity(product),
                             ),
                             Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 10),
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 10),
                               child: Text(
                                 '${item.quantity}',
                                 style: const TextStyle(
                                   fontSize: 13,
-                                  fontWeight: FontWeight.w700,
+                                  fontWeight: FontWeight.w800,
                                   color: AppColors.primaryDark,
                                 ),
                               ),
                             ),
-                            _buildButton(
+                            _buildStepperButton(
                               icon: Icons.add,
-                              onTap: () => cartCubit.increaseQuantity(product),
+                              tooltip: item.quantity >= item.product.stock
+                                  ? 'Max stock reached'
+                                  : 'Increase',
+                              isDisabled:
+                                  item.quantity >= item.product.stock,
+                              onTap: item.quantity >= item.product.stock
+                                  ? () {
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            'Cannot add more. Only ${item.product.stock} available in stock.',
+                                          ),
+                                          behavior: SnackBarBehavior.floating,
+                                          duration: const Duration(seconds: 2),
+                                        ),
+                                      );
+                                    }
+                                  : () =>
+                                      cartCubit.increaseQuantity(product),
                             ),
                           ],
                         ),
@@ -151,20 +241,26 @@ class CartItemTile extends StatelessWidget {
     );
   }
 
-  Widget _buildButton({
+  Widget _buildStepperButton({
     required IconData icon,
     required VoidCallback onTap,
+    String? tooltip,
+    bool isDisabled = false,
   }) {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(8),
         onTap: onTap,
         child: Container(
-          width: 28,
-          height: 28,
+          width: 30,
+          height: 32,
           alignment: Alignment.center,
-          child: Icon(icon, size: 14, color: AppColors.primary),
+          child: Icon(
+            icon,
+            size: 15,
+            color: isDisabled ? AppColors.textMuted : AppColors.primary,
+          ),
         ),
       ),
     );

@@ -14,6 +14,21 @@ class CartCubit extends Cubit<CartState> {
     loadCart();
   }
 
+  void toggleMoqEnforcement() {
+    final nextValue = !state.enforceMoq;
+    emit(state.copyWith(
+      enforceMoq: nextValue,
+      errorMessage: null,
+    ));
+  }
+
+  void setMoqEnforcement(bool enforce) {
+    emit(state.copyWith(
+      enforceMoq: enforce,
+      errorMessage: null,
+    ));
+  }
+
   Future<void> loadCart() async {
     emit(state.copyWith(status: CartStatus.loading));
     try {
@@ -34,26 +49,72 @@ class CartCubit extends Cubit<CartState> {
     }
   }
 
-  void addItem(Product product) {
-    increaseQuantity(product);
-  }
+  bool addItem(Product product) {
+    if (product.isOutOfStock) {
+      emit(state.copyWith(
+        errorMessage: '${product.title} is currently out of stock.',
+      ));
+      return false;
+    }
 
-  void increaseQuantity(Product product) {
+    if (state.enforceMoq && !product.hasSufficientStockForMoq) {
+      emit(state.copyWith(
+        errorMessage:
+            'Insufficient stock (${product.stock}) for minimum order quantity (${product.minimumOrderQuantity}).',
+      ));
+      return false;
+    }
+
     final currentMap = Map<int, CartItem>.from(state.items);
     final existing = currentMap[product.id];
 
+    // If MOQ enforcement is active, start with product.minimumOrderQuantity; else standard 1
+    final initialQuantity = state.enforceMoq && product.minimumOrderQuantity > 0
+        ? product.minimumOrderQuantity
+        : 1;
+
     if (existing != null) {
+      if (existing.quantity >= product.stock) {
+        emit(state.copyWith(
+          errorMessage:
+              'Maximum available stock (${product.stock}) reached for ${product.title}.',
+        ));
+        return false;
+      }
       currentMap[product.id] = existing.copyWith(
         quantity: existing.quantity + 1,
       );
     } else {
       currentMap[product.id] = CartItem(
         product: product,
-        quantity: 1,
+        quantity: initialQuantity,
       );
     }
 
     _updateCartStateAndPersist(currentMap);
+    return true;
+  }
+
+  bool increaseQuantity(Product product) {
+    final currentMap = Map<int, CartItem>.from(state.items);
+    final existing = currentMap[product.id];
+
+    if (existing != null) {
+      if (existing.quantity >= product.stock) {
+        emit(state.copyWith(
+          errorMessage:
+              'Maximum available stock (${product.stock}) reached for ${product.title}.',
+        ));
+        return false;
+      }
+      currentMap[product.id] = existing.copyWith(
+        quantity: existing.quantity + 1,
+      );
+      _updateCartStateAndPersist(currentMap);
+      return true;
+    } else {
+      return addItem(product);
+    }
   }
 
   void decreaseQuantity(Product product) {
@@ -62,12 +123,16 @@ class CartCubit extends Cubit<CartState> {
 
     if (existing == null) return;
 
-    if (existing.quantity > 1) {
+    final effectiveMoq = state.enforceMoq && product.minimumOrderQuantity > 0
+        ? product.minimumOrderQuantity
+        : 1;
+
+    if (existing.quantity > effectiveMoq) {
       currentMap[product.id] = existing.copyWith(
         quantity: existing.quantity - 1,
       );
     } else {
-      // Reaching 0 removes the product from the cart
+      // Reaching or going below minimum order threshold removes the product from the cart
       currentMap.remove(product.id);
     }
 
@@ -86,10 +151,15 @@ class CartCubit extends Cubit<CartState> {
     _updateCartStateAndPersist({});
   }
 
+  void clearErrorMessage() {
+    emit(state.copyWith(errorMessage: null));
+  }
+
   void _updateCartStateAndPersist(Map<int, CartItem> newItems) {
     emit(state.copyWith(
       status: CartStatus.loaded,
       items: newItems,
+      errorMessage: null,
     ));
 
     // Persist to local storage asynchronously (never blocks the UI thread)

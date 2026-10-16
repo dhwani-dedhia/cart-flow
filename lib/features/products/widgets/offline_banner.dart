@@ -18,66 +18,109 @@ class OfflineBanner extends StatelessWidget {
             final isSyncing = orderState.isSyncingOfflineOrders;
             final pendingCount = orderState.pendingOfflineCount;
 
-            if (!isOffline && !isSyncing && pendingCount == 0) {
+            final isVisible = isOffline || isSyncing || pendingCount > 0;
+
+            if (!isVisible) {
               return const SizedBox.shrink();
             }
 
             Color bgColor;
+            Color borderColor;
             Color textColor;
             IconData icon;
             String message;
+            String badgeText;
 
             if (isSyncing) {
               bgColor = AppColors.primaryContainer;
+              borderColor = AppColors.primaryLight.withValues(alpha: 0.5);
               textColor = AppColors.primaryDark;
-              icon = Icons.sync;
-              message = 'Syncing offline orders to server...';
+              icon = Icons.sync_rounded;
+              message = 'Syncing offline orders with cloud server...';
+              badgeText = 'SYNCING';
             } else if (isOffline) {
               bgColor = AppColors.offlineContainer;
-              textColor = AppColors.offline;
+              borderColor = AppColors.offline.withValues(alpha: 0.35);
+              textColor = AppColors.offlineDark;
               icon = Icons.wifi_off_rounded;
               message = pendingCount > 0
-                  ? 'Offline Mode — $pendingCount order(s) will auto-sync when online'
-                  : 'Offline Mode — browsing cached catalog & local cart';
-            } else if (pendingCount > 0) {
-              bgColor = AppColors.warningContainer;
-              textColor = AppColors.warning;
-              icon = Icons.cloud_upload_outlined;
-              message = '$pendingCount offline order(s) awaiting auto-sync';
+                  ? '$pendingCount order(s) queued locally • Auto-syncs on reconnect'
+                  : 'Offline Mode • Browsing cached catalog & local cart';
+              badgeText = 'OFFLINE';
             } else {
-              return const SizedBox.shrink();
+              bgColor = AppColors.warningContainer;
+              borderColor = AppColors.warning.withValues(alpha: 0.4);
+              textColor = AppColors.warningDark;
+              icon = Icons.cloud_upload_rounded;
+              message = '$pendingCount offline order(s) awaiting auto-sync';
+              badgeText = 'PENDING';
             }
 
-            return AnimatedContainer(
+            return AnimatedSize(
               duration: const Duration(milliseconds: 300),
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              color: bgColor,
-              child: Row(
-                children: [
-                  if (isSyncing)
-                    SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(textColor),
-                      ),
-                    )
-                  else
-                    Icon(icon, size: 18, color: textColor),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      message,
-                      style: TextStyle(
-                        color: textColor,
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w600,
+              curve: Curves.easeInOut,
+              child: Container(
+                margin: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                decoration: BoxDecoration(
+                  color: bgColor,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: borderColor, width: 1),
+                  boxShadow: [
+                    BoxShadow(
+                      color: textColor.withValues(alpha: 0.08),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    if (isSyncing)
+                      SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(textColor),
+                        ),
+                      )
+                    else
+                      Icon(icon, size: 18, color: textColor),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        message,
+                        style: TextStyle(
+                          color: textColor,
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: -0.1,
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 7,
+                        vertical: 2.5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: textColor.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        badgeText,
+                        style: TextStyle(
+                          color: textColor,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             );
           },

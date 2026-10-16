@@ -15,6 +15,7 @@ class AppTheme {
         onPrimaryContainer: AppColors.primaryDark,
         secondary: AppColors.secondary,
         onSecondary: Colors.white,
+        secondaryContainer: AppColors.secondaryContainer,
         surface: AppColors.surface,
         onSurface: AppColors.textPrimary,
         error: AppColors.error,
@@ -26,12 +27,13 @@ class AppTheme {
         foregroundColor: AppColors.textPrimary,
         elevation: 0,
         centerTitle: false,
-        scrolledUnderElevation: 1,
+        scrolledUnderElevation: 0.5,
+        surfaceTintColor: Colors.transparent,
         titleTextStyle: TextStyle(
           color: AppColors.textPrimary,
           fontSize: 20,
           fontWeight: FontWeight.w700,
-          letterSpacing: -0.5,
+          letterSpacing: -0.4,
         ),
       ),
       cardTheme: CardThemeData(
@@ -48,13 +50,14 @@ class AppTheme {
           backgroundColor: AppColors.primary,
           foregroundColor: Colors.white,
           elevation: 0,
+          shadowColor: AppColors.primaryGlow,
           minimumSize: const Size.fromHeight(48),
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
           textStyle: const TextStyle(
-            fontSize: 15,
+            fontSize: 14.5,
             fontWeight: FontWeight.w600,
             letterSpacing: 0.2,
           ),
@@ -77,20 +80,20 @@ class AppTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: Colors.white,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: AppColors.border),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: AppColors.border),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
         ),
-        hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 14),
+        hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 13.5),
       ),
       dividerTheme: const DividerThemeData(
         color: AppColors.divider,

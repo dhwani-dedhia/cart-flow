@@ -8,6 +8,7 @@ class Product extends Equatable {
   final double discountPercentage;
   final double rating;
   final int stock;
+  final int minimumOrderQuantity;
   final String brand;
   final String category;
   final String thumbnail;
@@ -20,12 +21,17 @@ class Product extends Equatable {
     required this.price,
     this.discountPercentage = 0.0,
     this.rating = 0.0,
-    this.stock = 0,
+    this.stock = 99,
+    this.minimumOrderQuantity = 1,
     this.brand = '',
     this.category = '',
     this.thumbnail = '',
     this.images = const [],
   });
+
+  bool get isOutOfStock => stock <= 0;
+  bool get hasSufficientStockForMoq => stock >= minimumOrderQuantity;
+  bool get canBePurchased => !isOutOfStock && hasSufficientStockForMoq;
 
   factory Product.fromJson(Map<String, dynamic> json) {
     return Product(
@@ -36,6 +42,10 @@ class Product extends Equatable {
       discountPercentage: (json['discountPercentage'] as num?)?.toDouble() ?? 0.0,
       rating: (json['rating'] as num?)?.toDouble() ?? 0.0,
       stock: json['stock'] as int? ?? 0,
+      minimumOrderQuantity: (json['minimumOrderQuantity'] as int?) != null &&
+              (json['minimumOrderQuantity'] as int) > 0
+          ? json['minimumOrderQuantity'] as int
+          : 1,
       brand: json['brand'] as String? ?? '',
       category: json['category'] as String? ?? '',
       thumbnail: json['thumbnail'] as String? ?? '',
@@ -55,6 +65,7 @@ class Product extends Equatable {
       'discountPercentage': discountPercentage,
       'rating': rating,
       'stock': stock,
+      'minimumOrderQuantity': minimumOrderQuantity,
       'brand': brand,
       'category': category,
       'thumbnail': thumbnail,
@@ -70,6 +81,7 @@ class Product extends Equatable {
     double? discountPercentage,
     double? rating,
     int? stock,
+    int? minimumOrderQuantity,
     String? brand,
     String? category,
     String? thumbnail,
@@ -83,6 +95,7 @@ class Product extends Equatable {
       discountPercentage: discountPercentage ?? this.discountPercentage,
       rating: rating ?? this.rating,
       stock: stock ?? this.stock,
+      minimumOrderQuantity: minimumOrderQuantity ?? this.minimumOrderQuantity,
       brand: brand ?? this.brand,
       category: category ?? this.category,
       thumbnail: thumbnail ?? this.thumbnail,
@@ -99,6 +112,7 @@ class Product extends Equatable {
         discountPercentage,
         rating,
         stock,
+        minimumOrderQuantity,
         brand,
         category,
         thumbnail,

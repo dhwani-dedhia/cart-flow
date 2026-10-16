@@ -124,5 +124,152 @@ void main() {
       expect(cartCubit.state.isEmpty, isTrue);
       expect(cartCubit.state.totalAmount, equals(0.0));
     });
+
+    test('addItem respects minimumOrderQuantity when enforceMoq is true', () {
+      cartCubit.setMoqEnforcement(true);
+      const moqProduct = Product(
+        id: 10,
+        title: 'Bulk Pack item',
+        description: 'Wholesale box',
+        price: 20.0,
+        stock: 50,
+        minimumOrderQuantity: 5,
+      );
+
+      final success = cartCubit.addItem(moqProduct);
+
+      expect(success, isTrue);
+      expect(cartCubit.state.getQuantity(10), equals(5));
+      expect(cartCubit.state.totalItemCount, equals(5));
+      expect(cartCubit.state.totalAmount, equals(100.0));
+    });
+
+    test('decreaseQuantity removes item when reaching minimumOrderQuantity in MOQ mode', () {
+      cartCubit.setMoqEnforcement(true);
+      const moqProduct = Product(
+        id: 10,
+        title: 'Bulk Pack item',
+        description: 'Wholesale box',
+        price: 20.0,
+        stock: 50,
+        minimumOrderQuantity: 3,
+      );
+
+      cartCubit.addItem(moqProduct); // starts at 3
+      expect(cartCubit.state.getQuantity(10), equals(3));
+
+      cartCubit.increaseQuantity(moqProduct); // increases to 4
+      expect(cartCubit.state.getQuantity(10), equals(4));
+
+      cartCubit.decreaseQuantity(moqProduct); // decreases back to 3
+      expect(cartCubit.state.getQuantity(10), equals(3));
+
+      // Decreasing at 3 (the MOQ) removes the product from the cart
+      cartCubit.decreaseQuantity(moqProduct);
+      expect(cartCubit.state.isInCart(10), isFalse);
+      expect(cartCubit.state.getQuantity(10), equals(0));
+    });
+
+    test('cannot add product if out of stock', () {
+      const outOfStockProduct = Product(
+        id: 99,
+        title: 'Sold Out Item',
+        description: 'Out of stock item',
+        price: 50.0,
+        stock: 0,
+      );
+
+      final success = cartCubit.addItem(outOfStockProduct);
+
+      expect(success, isFalse);
+      expect(cartCubit.state.isInCart(99), isFalse);
+      expect(cartCubit.state.errorMessage, contains('out of stock'));
+    });
+
+    test('cannot add product if stock is less than minimumOrderQuantity in MOQ mode', () {
+      cartCubit.setMoqEnforcement(true);
+      const insufficientStockProduct = Product(
+        id: 101,
+        title: 'Limited Item',
+        description: 'Requires 10, only 4 left',
+        price: 15.0,
+        stock: 4,
+        minimumOrderQuantity: 10,
+      );
+
+      final success = cartCubit.addItem(insufficientStockProduct);
+
+      expect(success, isFalse);
+      expect(cartCubit.state.isInCart(101), isFalse);
+      expect(cartCubit.state.errorMessage, contains('Insufficient stock'));
+    });
+
+    test('cannot increase quantity beyond available stock', () {
+      const limitedProduct = Product(
+        id: 200,
+        title: 'Rare Product',
+        description: 'Only 2 available',
+        price: 80.0,
+        stock: 2,
+        minimumOrderQuantity: 1,
+      );
+
+      cartCubit.addItem(limitedProduct); // qty 1
+      expect(cartCubit.state.getQuantity(200), equals(1));
+
+      final firstInc = cartCubit.increaseQuantity(limitedProduct); // qty 2 (max)
+      expect(firstInc, isTrue);
+      expect(cartCubit.state.getQuantity(200), equals(2));
+
+      // Attempting to exceed stock 2 is prevented
+      final secondInc = cartCubit.increaseQuantity(limitedProduct);
+      expect(secondInc, isFalse);
+      expect(cartCubit.state.getQuantity(200), equals(2));
+      expect(cartCubit.state.errorMessage, contains('Maximum available stock'));
+    });
+
+    test('toggleMoqEnforcement switches enforceMoq state', () {
+      expect(cartCubit.state.enforceMoq, isFalse);
+
+      cartCubit.toggleMoqEnforcement();
+      expect(cartCubit.state.enforceMoq, isTrue);
+
+      cartCubit.toggleMoqEnforcement();
+      expect(cartCubit.state.enforceMoq, isFalse);
+    });
+
+    test('when enforceMoq is false, addItem adds single unit even for products with MOQ > 1', () {
+      const bulkItem = Product(
+        id: 300,
+        title: 'Bulk Towels',
+        description: 'Pack of towels',
+        price: 10.0,
+        stock: 50,
+        minimumOrderQuantity: 12,
+      );
+
+      // Disable MOQ
+      cartCubit.setMoqEnforcement(false);
+
+      final success = cartCubit.addItem(bulkItem);
+
+      expect(success, isTrue);
+      // Starts with 1 instead of 12!
+      expect(cartCubit.state.getQuantity(300), equals(1));
+      expect(cartCubit.state.totalItemCount, equals(1));
+      expect(cartCubit.state.totalAmount, equals(10.0));
+
+      // Increase to 2
+      cartCubit.increaseQuantity(bulkItem);
+      expect(cartCubit.state.getQuantity(300), equals(2));
+
+      // Decrease back to 1
+      cartCubit.decreaseQuantity(bulkItem);
+      expect(cartCubit.state.getQuantity(300), equals(1));
+
+      // Decrease at 1 removes from cart
+      cartCubit.decreaseQuantity(bulkItem);
+      expect(cartCubit.state.isInCart(300), isFalse);
+    });
   });
 }

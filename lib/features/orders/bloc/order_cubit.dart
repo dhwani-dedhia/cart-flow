@@ -50,6 +50,7 @@ class OrderCubit extends Cubit<OrderState> {
     required List<CartItem> items,
     required double totalAmount,
     int userId = 1,
+    bool enforceMoq = false,
   }) async {
     if (items.isEmpty) {
       emit(state.copyWith(
@@ -57,6 +58,34 @@ class OrderCubit extends Cubit<OrderState> {
         errorMessage: 'Cannot place an empty order.',
       ));
       return;
+    }
+
+    // Stock and Minimum Order Quantity validation
+    for (final item in items) {
+      if (item.product.isOutOfStock) {
+        emit(state.copyWith(
+          submissionStatus: OrderSubmissionStatus.failure,
+          errorMessage:
+              'Cannot place order: "${item.product.title}" is out of stock.',
+        ));
+        return;
+      }
+      if (item.quantity > item.product.stock) {
+        emit(state.copyWith(
+          submissionStatus: OrderSubmissionStatus.failure,
+          errorMessage:
+              'Cannot place order: "${item.product.title}" exceeds available stock (${item.product.stock}).',
+        ));
+        return;
+      }
+      if (enforceMoq && item.quantity < item.product.minimumOrderQuantity) {
+        emit(state.copyWith(
+          submissionStatus: OrderSubmissionStatus.failure,
+          errorMessage:
+              'Cannot place order: "${item.product.title}" requires a minimum order of ${item.product.minimumOrderQuantity} items.',
+        ));
+        return;
+      }
     }
 
     emit(state.copyWith(
